@@ -43,14 +43,13 @@
 mod curve;
 
 fn main() {
-    let g = curve::Point::Pt{x:80, y:10};
     let curve = curve::Curve{a:2, b:3, p:97};
 
-    let g2 = curve.double(g);
+    let g3 = curve.add(curve::Point::Pt{x:3, y:6}, curve::Point::Pt{x:3, y:6});
 
-    dbg!("{}", &g2);
+    dbg!("{}", &g3);
 
-    let g3 = curve.double(g2);
+    let g4 = curve.double(g3);
 
-    dbg!("{}", g3);
+    dbg!("{}", &g4);
 }

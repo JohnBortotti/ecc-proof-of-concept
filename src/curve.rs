@@ -67,40 +67,35 @@ impl Curve {
                     let rx: i64 = (s.pow(2) - 2i64 * x) % self.p;
                     let ry: i64 = (self.p - (s * rx) % self.p + self.p - i) % self.p;
 
-                    Point::Pt{x: rx, y: -ry}
+                    Point::Pt{x: rx, y: ry}
                 }
 
             }
         }
     }
  
-    // point add
-    // cord slope = y2 - y1 / x2 - x1 mod p
-    // x = S^2 - x1 - x2 mod p
-   // y = S (x1 - x3) - y1 mod p
-    // pub fn add(&self, p: Point, q: Point) -> Point {
-    //     match (p, q) {
-    //         (q, Point::Inf) | (Point::Inf, q) => q,
-    //         (Point::Pt{x: px, y: py}, Point::Pt{x: qx, y: qy}) => {
-    //             if px == qx {
-    //                 // point doubling case (px == px && py == py && py != 0)
-    //                 if py == qy && py != 0 {
-    //                     let s = ((3 * (px.pow(2)) + self.a) / 2*py) % self.p;
-    //                     let rx = (s.pow(2) - px - qx) % self.p;
-    //                     let ry = (s * (px - rx) - qy) % self.p;
-    //
-    //                     Point::Pt{x: rx, y: ry}
-    //                 } else { Point::Inf }
-    //             } else {
-    //                 // point add case, using cord slope (p != q)
-    //                 let s = (qy - py) / (qx - px) % self.p;
-    //                 let rx = (s.pow(2) - px - qx) % self.p;
-    //                 let ry = (s * (px - rx) - qy) % self.p;
-    //
-    //                 Point::Pt{x: rx, y: ry}
-    //             }
-    //         }
-    //     }
-    // }
+    // point addition
+    pub fn add(&self, p: Point, q: Point) -> Point {
+        match (p, q) {
+            (q, Point::Inf) | (Point::Inf, q) => q,
+            (Point::Pt{x: px, y: py}, Point::Pt{x: qx, y: qy}) => {
+                if px == qx {
+                    // point doubling case                      
+                    Curve::double(&self, Point::Pt{x:px, y:py})
+                } else {
+                    // point add case, using tangent
+                    let s: i64 = Curve::modular_division(self.p, py + self.p - qy, qx + self.p - qx);
+
+                    // y coord of intersection point 
+                    let i: i64 = (py + self.p - (s * px) % self.p) % self.p;
+
+                    let rx: i64 = (s.pow(2) + self.p - px + self.p - qx) % self.p;
+                    let ry: i64 = (self.p - (s * rx) % self.p + self.p - i) % self.p;
+
+                    Point::Pt{x: rx, y: ry}
+                }
+            }
+        }
+    }
 
 }
