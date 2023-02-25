@@ -1,12 +1,3 @@
-// papers | source
-// https://crypto.stanford.edu/pbc/notes/elliptic/explicit.html
-// https://trustica.cz/2018/03/22/elliptic-curves-point-doubling/
-// https://math.mit.edu/~dav/finitefields.pdf
-// https://www.ams.org/journals/mcom/1985-44-170/S0025-5718-1985-0777280-6/S0025-5718-1985-0777280-6.pdf
-// https://www.ams.org/journals/mcom/1987-49-179/S0025-5718-1987-0890272-3/S0025-5718-1987-0890272-3.pdf
-// http://www.numdam.org/item/JTNB_1995__7_1_219_0.pdf
-// https://core.ac.uk/download/pdf/10898289.pdf
-
 // Surveys
 //
 // Modular arithmetic
@@ -14,7 +5,7 @@
 // calc linear algebra on finite fields, for this reason, when calculating over finite fields, use
 // modular arithmetic (inverse_mod in place of division).
 //
-// considering the field {0, 1, 2, 3}, what happens with 2/3?
+// considering the field {0, 1, 2, 3}, what happens with 2/3? the field is not closed for this operation
 //
 // If gcd(k,N)=1 and ka ≡ kb(mod N), then a ≡ b (modN).
 // If a and N are integers such that gcd(a,N)=1, then there exists an integer x such that ax ≡ 1 (modN).
@@ -31,6 +22,7 @@
 // 
 // inversion operation a.k.a. negation law (-)
 // −O = O
+//
 // Let P1 = (u1, v1) ∈ EW. Then 1 = (u1, −v1 − a1u1 −a3)
 // P1 + P2 = P2 + P1 (Commutativity)
 // (P0 + P1) + P2 = P0 + (P1 + P2) (Associativity)
