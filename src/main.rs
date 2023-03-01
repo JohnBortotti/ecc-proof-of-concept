@@ -48,7 +48,7 @@ fn main() {
 
     // dbg!("{}", q2);
 
-    prime_mod_field!(PF_5 => "5");
+    mod_field!(PF_5 => "5");
 
     let n = BigUint::from_str(&"123123123").unwrap();
     let a: arithmetic::ModN<PF_5> = arithmetic::ModN::new(n);

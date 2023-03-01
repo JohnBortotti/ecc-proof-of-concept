@@ -2,12 +2,12 @@ pub use num_bigint::BigUint;
 
 use std::marker::PhantomData;
 
-pub trait PrimeMod {
+pub trait ModField {
     fn get_mod() -> &'static BigUint;
 }
 
 #[macro_export]
-macro_rules! prime_mod_field {
+macro_rules! mod_field {
     ($name:ident => $num:literal) => {
         
         lazy_static::lazy_static! {
@@ -16,7 +16,7 @@ macro_rules! prime_mod_field {
             };
         }
 
-        impl $crate::arithmetic::PrimeMod for $name {
+        impl $crate::arithmetic::ModField for $name {
             fn get_mod() -> &'static $crate::arithmetic::BigUint {
                 &*$name
             }
@@ -26,12 +26,12 @@ macro_rules! prime_mod_field {
     () => {};
 }
 
-pub struct ModN<P: PrimeMod> {
+pub struct ModN<P: ModField> {
     pub n: BigUint,
     modulo: PhantomData<P>
 }
 
-impl<M: PrimeMod> ModN<M> {
+impl<M: ModField> ModN<M> {
     pub fn new(n: BigUint) -> Self {
         Self { n: n % M::get_mod(), modulo: PhantomData }
 
