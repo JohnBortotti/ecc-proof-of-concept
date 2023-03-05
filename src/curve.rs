@@ -1,23 +1,23 @@
-use num_bigint::{BigUint, ToBigUint};
+use num_bigint::{BigUint, ToBigUint, BigInt, ToBigInt};
 use num_traits::{Zero, One};
 
 #[derive(Debug, Clone)]
 pub enum Point {
-    Pt { x: BigUint, y: BigUint },
+    Pt { x: BigInt, y: BigInt },
     Inf
 }
 
 // weierstrass form
 pub struct Curve {
-    pub a: BigUint,
-    pub b: BigUint,
-    pub p: BigUint
+    pub a: BigInt,
+    pub b: BigInt,
+    pub p: BigInt
 }
 
 impl Curve {
-    fn egcd(a: &BigUint, b: &BigUint) -> (BigUint, BigUint, BigUint) {
+    fn egcd(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
         if a.is_zero() {
-            return (b.to_biguint().unwrap(), Zero::zero(), One::one());
+            return (b.to_bigint().unwrap(), Zero::zero(), One::one());
         }
 
         let (gcd, x1, y1) = Curve::egcd(&(b % a), a);
@@ -27,7 +27,7 @@ impl Curve {
         (gcd, x, y)
     }
 
-    fn inverse_mod(a: &BigUint, m: &BigUint) -> Option<BigUint> {
+    fn inverse_mod(a: &BigInt, m: &BigInt) -> Option<BigInt> {
         let (g, x, _) = Curve::egcd(&a, &m);
 
         if g == One::one() {
@@ -39,7 +39,7 @@ impl Curve {
 
     }
 
-    fn modular_division(modulo: &BigUint, num: &BigUint, den: &BigUint) -> BigUint {
+    fn modular_division(modulo: &BigInt, num: &BigInt, den: &BigInt) -> BigInt {
         let inverse_denominator = Curve::inverse_mod(&(den % modulo), modulo).unwrap();
         ((num % modulo) * inverse_denominator) % modulo
     }
@@ -56,20 +56,20 @@ impl Curve {
                 if y == Zero::zero() { 
                     Point::Inf
                 } else {
-                    let p: &BigUint = &self.p.to_biguint().unwrap();
-                    let a: BigUint = self.a.to_biguint().unwrap();
-                    let x: &BigUint = &x.to_biguint().unwrap();
-                    let y: BigUint = y.to_biguint().unwrap();
+                    let p: &BigInt = &self.p.to_bigint().unwrap();
+                    let a: BigInt = self.a.to_bigint().unwrap();
+                    let x: &BigInt = &x.to_bigint().unwrap();
+                    let y: BigInt = y.to_bigint().unwrap();
 
                     // tangent slope (Weierstrass curve derivation with respect to y)
                     // division isn't well defined on modular arithmetic, so we use inverse_mod
-                    let s: BigUint = Curve::modular_division(&(p), &(3.to_biguint().unwrap() * (x.pow(2)) + a), &(2.to_biguint().unwrap() * &y));
+                    let s: BigInt = Curve::modular_division(&(p), &(3.to_bigint().unwrap() * (x.pow(2)) + a), &(2.to_bigint().unwrap() * &y));
 
                     // y coord of intersection point 
-                    let i: BigUint = (&y + p - (&s * x) % p) % p;
+                    let i: BigInt = (&y + p - (&s * x) % p) % p;
 
-                    let rx: BigUint = (s.pow(2) - 2.to_biguint().unwrap() * x) % p;
-                    let ry: BigUint = (p - (s * &rx) % p + p - i) % p;
+                    let rx: BigInt = (s.pow(2) - 2.to_bigint().unwrap() * x) % p;
+                    let ry: BigInt = (p - (s * &rx) % p + p - i) % p;
 
                     Point::Pt{x: rx, y: ry}
                 }
@@ -88,15 +88,15 @@ impl Curve {
                     Curve::double(&self, Point::Pt{x: px, y: py})
                 } else {
                     // point add case, using tangent
-                    let p: &BigUint = &self.p;
+                    let p: &BigInt = &self.p;
 
-                    let s: BigUint = Curve::modular_division(&(self.p.to_biguint().unwrap()), &(&py + p - qy), &(&qx + p - &qx));
+                    let s: BigInt = Curve::modular_division(&(self.p.to_bigint().unwrap()), &(&py + p - qy), &(&qx + p - &qx));
 
                     // y coord of intersection point 
-                    let i: BigUint = (py + p - (&s * &px) % p) % p;
+                    let i: BigInt = (py + p - (&s * &px) % p) % p;
 
-                    let rx: BigUint = (s.pow(2) + p - px + p - qx) % p;
-                    let ry: BigUint = (p - (s * &rx) % p + p - i) % p;
+                    let rx: BigInt = (s.pow(2) + p - px + p - qx) % p;
+                    let ry: BigInt = (p - (s * &rx) % p + p - i) % p;
 
                     Point::Pt{x: rx, y: ry}
                 }
