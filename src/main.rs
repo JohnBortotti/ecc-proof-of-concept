@@ -30,14 +30,13 @@
 // on the fields, prohibiting diferent groups operating together
 
 // Todo 
-//  - create curve parameters with bigUints
 //  - use ModN for curve calculations
 //  - optimize point representation (x, 0/1)
 
 mod curve;
 mod arithmetic;
 
-use num_bigint::{BigUint, ToBigUint, BigInt, ToBigInt};
+use num_bigint::BigInt;
 use std::str::FromStr;
 
 fn main() {
@@ -52,7 +51,7 @@ fn main() {
 
     let q = curve::Point::Pt{x, y};
 
-    let q2 = curve.mul(q, 5);
+    let q2 = curve.mul(q, 2);
 
     dbg!("{}", q2);
 
