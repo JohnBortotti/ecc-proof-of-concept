@@ -37,22 +37,23 @@
 mod curve;
 mod arithmetic;
 
-pub use num_bigint::BigUint;
+pub use num_bigint::{BigUint, ToBigUint};
 use std::str::FromStr;
 
 fn main() {
-    // let curve = curve::Curve{a:0, b:7, p:97};
+    let a: BigUint = BigUint::from_str("0").unwrap();
+    let b: BigUint = BigUint::from_str("7").unwrap();
+    let p: BigUint = BigUint::from_str("97").unwrap();
 
-    // let q = curve::Point::Pt{x: 3, y:6};
-    // let q2 = curve.mul(q, 2);
+    let curve = curve::Curve{a, b, p};
 
-    // dbg!("{}", q2);
+    let x: BigUint = BigUint::from_str("3").unwrap();
+    let y: BigUint = BigUint::from_str("6").unwrap();
 
-    mod_field!(PF_5 => "5");
+    let q = curve::Point::Pt{x, y};
 
-    let n = BigUint::from_str(&"123123123").unwrap();
-    let a: arithmetic::ModN<PF_5> = arithmetic::ModN::new(n);
+    let q2 = curve.mul(q, 2);
 
-    dbg!(a.n);
+    dbg!("{}", q2);
 
 }
