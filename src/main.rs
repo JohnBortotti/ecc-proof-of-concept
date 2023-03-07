@@ -40,19 +40,32 @@ use num_bigint::BigInt;
 use std::str::FromStr;
 
 fn main() {
-    let a: BigInt = BigInt::from_str("0").unwrap();
-    let b: BigInt = BigInt::from_str("7").unwrap();
-    let p: BigInt = BigInt::from_str("97").unwrap();
+    mod_field!(MF => "97");
 
-    let curve = curve::Curve{a, b, p};
+    let a_i: BigInt = BigInt::from_str("0").unwrap();
+    let a: arithmetic::ModN<MF> = arithmetic::ModN::new(a_i);
 
-    let x: BigInt = BigInt::from_str("3").unwrap();
-    let y: BigInt = BigInt::from_str("6").unwrap();
+    let b_i: BigInt = BigInt::from_str("7").unwrap();
+    let b: arithmetic::ModN<MF>  = arithmetic::ModN::new(b_i);
+
+    let curve = curve::Curve{a, b};
+
+    let x_i: BigInt = BigInt::from_str("3").unwrap();
+    let x: arithmetic::ModN<MF> = arithmetic::ModN::new(x_i);
+    
+    let y_i: BigInt = BigInt::from_str("6").unwrap();
+    let y: arithmetic::ModN<MF> = arithmetic::ModN::new(y_i);
 
     let q = curve::Point::Pt{x, y};
 
-    let q2 = curve.mul(q, 2);
+    let q2: curve::Point<MF> = curve.mul(q, 2);
 
     dbg!("{}", q2);
 
+    // mod_field!(MF_5 => "5");
+    //
+    // let n = BigInt::from_str(&"123123123").unwrap();
+    // let z: arithmetic::ModN<MF_5> = arithmetic::ModN::new(n); 
+    //
+    // dbg!("{}", z.n);
 }

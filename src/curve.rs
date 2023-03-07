@@ -1,17 +1,17 @@
 use num_bigint::{BigInt, ToBigInt};
 use num_traits::{Zero, One};
+use crate::arithmetic::{ModN, ModField};
 
-#[derive(Debug, Clone)]
-pub enum Point {
-    Pt { x: BigInt, y: BigInt },
-    Inf
+#[derive(Debug)]
+pub enum Point<T: ModField> {
+    Inf,
+    Pt { x: ModN<T>, y: ModN<T> },
 }
 
 // weierstrass form
-pub struct Curve {
-    pub a: BigInt,
-    pub b: BigInt,
-    pub p: BigInt
+pub struct Curve<T: ModField> {
+    pub a: ModN<T>,
+    pub b: ModN<T>,
 }
 
 fn egcd(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
@@ -43,12 +43,12 @@ fn modular_division(modulo: &BigInt, num: &BigInt, den: &BigInt) -> BigInt {
     ((num % modulo) * inverse_denominator) % modulo
 }
 
-impl Curve {
+impl<T: ModField> Curve<T> {
     // point doubling
     // for point doubling, calc the tangent slope in P, 
     // take the intersection point for slope and curve, 
     // invert the y coord of found point
-    pub fn double(&self, p: Point) -> Point {
+    pub fn double(&self, p: Point<T>) -> Point<T> {
         match p {
             // matching identity cases
             Point::Inf => Point::Inf,
@@ -79,7 +79,7 @@ impl Curve {
     }
  
     // point addition
-    pub fn add(&self, p: Point, q: Point) -> Point {
+    pub fn add(&self, p: Point<T>, q: Point<T>) -> Point<T> {
         match (p, q) {
             (q, Point::Inf) | (Point::Inf, q) => q,
             (Point::Pt{x: px, y: py}, Point::Pt{x: qx, y: qy}) => {
@@ -105,7 +105,7 @@ impl Curve {
     }
 
     // point scalar multiplication (double and add)
-    pub fn mul(&self, p: Point, m: i128) -> Point {
+    pub fn mul(&self, p: Point<T>, m: i128) -> Point<T> {
         let mut result: Point = Point::Pt{x: Zero::zero(), y: Zero::zero()};
         let mut curr = p;
         let binary_scalar = format!("{:b}", m);
