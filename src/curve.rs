@@ -1,6 +1,6 @@
-use num_bigint::{BigInt, ToBigInt};
-use num_traits::{Zero, One};
-use crate::arithmetic::{ModN, ModField};
+use num_bigint::ToBigInt;
+use num_traits::Zero;
+use crate::arithmetic::{ModN, ModField, modular_division};
 
 #[derive(Debug)]
 pub enum Point<T: ModField> {
@@ -8,39 +8,25 @@ pub enum Point<T: ModField> {
     Pt { x: ModN<T>, y: ModN<T> },
 }
 
+impl<T: ModField> Clone for Point<T> {
+    fn clone(&self) -> Self {
+        match &self {
+            Point::Inf => Point::Inf,
+            Point::Pt {x, y} => {
+                let xr = ModN::new(x.n.clone());
+                let yr = ModN::new(y.n.clone());
+
+                Point::Pt{x: xr, y: yr}
+            }
+
+        }
+    }
+}
+
 // weierstrass form
 pub struct Curve<T: ModField> {
     pub a: ModN<T>,
     pub b: ModN<T>,
-}
-
-fn egcd(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
-    if a.is_zero() {
-        return (b.to_bigint().unwrap(), Zero::zero(), One::one());
-    }
-
-    let (gcd, x1, y1) = egcd(&(b % a), a);
-    let x = y1 - (b / a) * &x1;
-    let y = x1;
-
-    (gcd, x, y)
-}
-
-fn inverse_mod(a: &BigInt, m: &BigInt) -> Option<BigInt> {
-    let (g, x, _) = egcd(&a, &m);
-
-    if g == One::one() {
-        Some((x % m + m) % m)
-    }
-    else {
-        None
-    }
-
-}
-
-fn modular_division(modulo: &BigInt, num: &BigInt, den: &BigInt) -> BigInt {
-    let inverse_denominator = inverse_mod(&(den % modulo), modulo).unwrap();
-    ((num % modulo) * inverse_denominator) % modulo
 }
 
 impl<T: ModField> Curve<T> {
@@ -53,23 +39,23 @@ impl<T: ModField> Curve<T> {
             // matching identity cases
             Point::Inf => Point::Inf,
             Point::Pt {x, y} => {
-                if y == Zero::zero() { 
+                if Zero::is_zero(&y) { 
                     Point::Inf
                 } else {
-                    let p: &BigInt = &self.p.to_bigint().unwrap();
-                    let a: BigInt = self.a.to_bigint().unwrap();
-                    let x: &BigInt = &x.to_bigint().unwrap();
-                    let y: BigInt = y.to_bigint().unwrap();
-
                     // tangent slope (Weierstrass curve derivation with respect to y)
                     // division isn't well defined on modular arithmetic, so we use inverse_mod
-                    let s: BigInt = modular_division(&(p), &(3.to_bigint().unwrap() * (x.pow(2)) + a), &(2.to_bigint().unwrap() * &y));
+                    let s: ModN<T> = modular_division(
+                        ModN::new(3.to_bigint().unwrap()) * (x.clone() * x.clone()) + self.a.clone(),
+                        ModN::new(2.to_bigint().unwrap()) * y.clone()
+                    );
 
                     // y coord of intersection point 
-                    let i: BigInt = (&y + p - (&s * x) % p) % p;
+                    let i: ModN<T> = y - (s.clone() * x.clone());
 
-                    let rx: BigInt = (s.pow(2) - 2.to_bigint().unwrap() * x) % p;
-                    let ry: BigInt = (p - (s * &rx) % p + p - i) % p;
+                    let zero = ModN::new(0.to_bigint().unwrap());
+
+                    let rx = (s.clone() * s.clone()) - ModN::new(2.to_bigint().unwrap()) * x;
+                    let ry = zero - (s * rx.clone()) - i;
 
                     Point::Pt{x: rx, y: ry}
                 }
@@ -83,20 +69,21 @@ impl<T: ModField> Curve<T> {
         match (p, q) {
             (q, Point::Inf) | (Point::Inf, q) => q,
             (Point::Pt{x: px, y: py}, Point::Pt{x: qx, y: qy}) => {
-                if px == qx {
+                if px.n == qx.n {
                     // point doubling case                      
                     Curve::double(&self, Point::Pt{x: px, y: py})
                 } else {
                     // point add case, using tangent
-                    let p: &BigInt = &self.p;
 
-                    let s: BigInt = modular_division(&(self.p.to_bigint().unwrap()), &(&py + p - qy), &(&qx + p - &qx));
+                    let s = modular_division(qy.clone() - py.clone(), qx.clone() - px.clone());
 
                     // y coord of intersection point 
-                    let i: BigInt = (py + p - (&s * &px) % p) % p;
+                    let i = py - (s.clone() * px.clone());
 
-                    let rx: BigInt = (s.pow(2) + p - px + p - qx) % p;
-                    let ry: BigInt = (p - (s * &rx) % p + p - i) % p;
+                    let zero = ModN::new(0.to_bigint().unwrap());
+
+                    let rx = (s.clone() * s.clone()) - px - qx;
+                    let ry = zero - (s * rx.clone()) - i;
 
                     Point::Pt{x: rx, y: ry}
                 }
@@ -105,9 +92,10 @@ impl<T: ModField> Curve<T> {
     }
 
     // point scalar multiplication (double and add)
-    pub fn mul(&self, p: Point<T>, m: i128) -> Point<T> {
-        let mut result: Point = Point::Pt{x: Zero::zero(), y: Zero::zero()};
+    pub fn mul(&self, p: Point<T>, m: u128) -> Point<T> {
+        let mut result: Point<T> = Point::Pt{x: Zero::zero(), y: Zero::zero()};
         let mut curr = p;
+
         let binary_scalar = format!("{:b}", m);
 
         for c in binary_scalar.chars() {
@@ -128,45 +116,20 @@ impl<T: ModField> Curve<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_bigint::{BigInt, ToBigInt};
-
-    #[test]
-    fn test_egcd() {
-        let x: BigInt = 180.to_bigint().unwrap();
-        let y: BigInt = 150.to_bigint().unwrap();
-
-        assert_eq!(egcd(&x, &y), (30.to_bigint().unwrap(), 1.to_bigint().unwrap(), -1.to_bigint().unwrap()))
-    }
-
-    #[test]
-    fn test_inverse_mod() {
-        let x: BigInt = 3.to_bigint().unwrap();
-        let y: BigInt = 26.to_bigint().unwrap();
-
-        let r = inverse_mod(&x, &y).unwrap();
-
-        assert_eq!(r, 9.to_bigint().unwrap());
-    }
-
-    #[test]
-    fn test_modular_division() {
-        let x: BigInt = 3.to_bigint().unwrap();
-        let y: BigInt = 26.to_bigint().unwrap();
-        let z: BigInt = 4.to_bigint().unwrap();
-
-        assert_eq!(modular_division(&x, &y, &z), 2.to_bigint().unwrap());
-    }
+    use num_bigint::ToBigInt;
+    use crate::mod_field;
 
     #[test]
     fn test_curve_double() {
-        let a: BigInt = 2.to_bigint().unwrap();
-        let b: BigInt = 3.to_bigint().unwrap();
-        let p: BigInt = 97.to_bigint().unwrap();
+        mod_field!(MF_97 => "97");
 
-        let curve = Curve{a, b, p};
+        let a: ModN<MF_97> = ModN::new(2.to_bigint().unwrap());
+        let b: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
 
-        let x: BigInt = 3.to_bigint().unwrap();
-        let y: BigInt = 6.to_bigint().unwrap();
+        let curve = Curve{a, b};
+
+        let x: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+        let y: ModN<MF_97> = ModN::new(6.to_bigint().unwrap());
 
         let q = Point::Pt{x, y};
 
@@ -175,52 +138,96 @@ mod tests {
         match double {
             Point::Inf => {},
             Point::Pt {x, y} => {
-                assert_eq!(x, 80.to_bigint().unwrap());
-                assert_eq!(y, 10.to_bigint().unwrap());
+                let x_expected: ModN<MF_97> = ModN::new(80.to_bigint().unwrap());
+                let y_expected: ModN<MF_97> = ModN::new(10.to_bigint().unwrap());
+
+                assert_eq!(x, x_expected);
+                assert_eq!(y, y_expected);
             }
         }
 
     }
 
     #[test]
-    fn test_curve_add() {
-        let a: BigInt = 2.to_bigint().unwrap();
-        let b: BigInt = 3.to_bigint().unwrap();
-        let p: BigInt = 97.to_bigint().unwrap();
+    fn test_curve_add_1() {
+        mod_field!(MF_97 => "97");
 
-        let curve = Curve{a, b, p};
+        let a: ModN<MF_97> = ModN::new(2.to_bigint().unwrap());
+        let b: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
 
-        let q = Point::Pt{x: 3.to_bigint().unwrap(), y: 6.to_bigint().unwrap()};
-        let p = Point::Pt{x: 3.to_bigint().unwrap(), y: 6.to_bigint().unwrap()};
+        let curve = Curve{a, b};
 
-        let r = curve.add(q, p);
+        let x: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+        let y: ModN<MF_97> = ModN::new(6.to_bigint().unwrap());
+
+        let q = Point::Pt{x: x.clone(), y: y.clone()};
+        let p = Point::Pt{x: x.clone(), y: y.clone()};
+
+        let r = curve.add(p, q);
 
         match r {
             Point::Inf => {},
-            Point::Pt { x, y } => {
-                assert_eq!(x, 80.to_bigint().unwrap());
-                assert_eq!(y, 10.to_bigint().unwrap());
+            Point::Pt {x, y} => {
+                let x_expected: ModN<MF_97> = ModN::new(80.to_bigint().unwrap());
+                let y_expected: ModN<MF_97> = ModN::new(10.to_bigint().unwrap());
+
+                assert_eq!(x, x_expected);
+                assert_eq!(y, y_expected);
             }
         }
     }
 
     #[test]
+    fn test_curve_add_2() {
+        mod_field!(MF_97 => "97");
+
+        let a: ModN<MF_97> = ModN::new(2.to_bigint().unwrap());
+        let b: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+
+        let curve = Curve{a, b};
+
+        let p = Point::Pt{x: ModN::new(80.to_bigint().unwrap()), y: ModN::new(10.to_bigint().unwrap())};
+        let q = Point::Pt{x: ModN::new(3.to_bigint().unwrap()), y: ModN::new(91.to_bigint().unwrap())};
+
+        let r = curve.add(p, q);
+
+        match r {
+            Point::Inf => {},
+            Point::Pt {x, y} => {
+                let x_expected: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+                let y_expected: ModN<MF_97> = ModN::new(6.to_bigint().unwrap());
+
+                assert_eq!(x, x_expected);
+                assert_eq!(y, y_expected);
+            }
+        }
+    }
+
+
+    #[test]
     fn test_curve_mul() {
-        let a: BigInt = 2.to_bigint().unwrap();
-        let b: BigInt = 3.to_bigint().unwrap();
-        let p: BigInt = 97.to_bigint().unwrap();
+        mod_field!(MF_97 => "97");
 
-        let curve = Curve{a, b, p};
+        let a: ModN<MF_97> = ModN::new(2.to_bigint().unwrap());
+        let b: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
 
-        let q = Point::Pt{x: 3.to_bigint().unwrap(), y: 6.to_bigint().unwrap()};
+        let curve = Curve{a, b};
+
+        let x: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+        let y: ModN<MF_97> = ModN::new(6.to_bigint().unwrap());
+
+        let q = Point::Pt{x, y};
 
         let r = curve.mul(q, 4);
 
         match r {
             Point::Inf => {},
-            Point::Pt { x, y } => {
-                assert_eq!(x, 3.to_bigint().unwrap());
-                assert_eq!(y, 91.to_bigint().unwrap());
+            Point::Pt {x, y} => {
+                let x_expected: ModN<MF_97> = ModN::new(3.to_bigint().unwrap());
+                let y_expected: ModN<MF_97> = ModN::new(91.to_bigint().unwrap());
+
+                assert_eq!(x, x_expected);
+                assert_eq!(y, y_expected);
             }
         }
     }
