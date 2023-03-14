@@ -31,7 +31,3 @@ A little survey that i've done while studying and implementing this repo:
 - A recurrent aproach, is defining PrimeGroups type with Macros (macro_rules!), so you get compile-checking on fields, prohibiting diferent groups operating together
 
 - Rust does not implement the "modulo" operator (check this: https://internals.rust-lang.org/t/mathematical-modulo-operator/5952)
-
-### ToDo
-- [ ] Diffie–Hellman ECC
-- [ ] ECDSA
